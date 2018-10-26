@@ -83,8 +83,10 @@ class ConfluentFeatureSerializer(sft: SimpleFeatureType,
       Option(wktReader.read(genericRecord.get(fieldName).toString))
     } catch {
       case NonFatal(t) =>
-        logger.error(s"Error parsing wkt from field $fieldName with value ${genericRecord.get(fieldName)} " +
-          s"for sft ${sft.getTypeName}")
+        if (logFailure) {
+          logger.error(s"Error parsing wkt from field $fieldName with value ${genericRecord.get(fieldName)} " +
+            s"for sft ${sft.getTypeName}")
+        }
         None
     }
   }
