@@ -21,6 +21,7 @@ import org.geotools.feature.simple.SimpleFeatureTypeBuilder
 import org.locationtech.geomesa.features.confluent.ConfluentFeatureSerializer
 import org.locationtech.geomesa.index.metadata.GeoMesaMetadata
 import org.locationtech.geomesa.kafka.data.KafkaDataStore
+import org.locationtech.geomesa.kafka.utils.ConfluentMetadata.{schemaToSft, SUBJECT_POSTFIX}
 import org.locationtech.geomesa.utils.geotools.SimpleFeatureTypes
 import org.opengis.feature.simple.SimpleFeatureType
 
@@ -40,9 +41,9 @@ class ConfluentMetadata(val schemaRegistry: SchemaRegistryClient) extends GeoMes
 
   protected def getSftSpecForTopic(topic: String): Option[String] =
     try {
-      val subject = topic + "-value"
+      val subject = topic + SUBJECT_POSTFIX
       val schemaId = schemaRegistry.getLatestSchemaMetadata(subject).getId
-      val sft = ConfluentMetadata.schemaToSft(schemaRegistry.getByID(schemaId), topic) // todo: any restrictions on sftName not on topic?
+      val sft = schemaToSft(schemaRegistry.getByID(schemaId), topic) // todo: any restrictions on sftName not on topic?
       KafkaDataStore.setTopic(sft, topic)
       Option(SimpleFeatureTypes.encodeType(sft, includeUserData = true))
     } catch {
@@ -51,7 +52,10 @@ class ConfluentMetadata(val schemaRegistry: SchemaRegistryClient) extends GeoMes
         None
     }
 
-  override def getFeatureTypes: Array[String] = topicSftCache.asMap().values().asScala.toArray
+  override def getFeatureTypes: Array[String] = schemaRegistry.getAllSubjects.asScala
+                                                              .filter(_.endsWith(SUBJECT_POSTFIX))
+                                                              .map(s => s.substring(0, s.lastIndexOf(SUBJECT_POSTFIX)))
+                                                              .toArray
 
   override def read(typeName: String, key: String, cache: Boolean): Option[String] = {
     if (key != GeoMesaMetadata.ATTRIBUTES_KEY) {
@@ -88,6 +92,7 @@ class ConfluentMetadata(val schemaRegistry: SchemaRegistryClient) extends GeoMes
 }
 
 object ConfluentMetadata extends LazyLogging {
+  val SUBJECT_POSTFIX = "-value"
 
   def schemaToSft(schema: Schema, sftName: String): SimpleFeatureType = {
     val builder = new SimpleFeatureTypeBuilder

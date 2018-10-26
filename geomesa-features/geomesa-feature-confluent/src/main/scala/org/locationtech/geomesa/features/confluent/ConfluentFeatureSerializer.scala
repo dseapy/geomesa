@@ -58,7 +58,7 @@ class ConfluentFeatureSerializer(sft: SimpleFeatureType,
         geomSrcAttributeName.map(readFieldAsWkt(genericRecord, _).get).getOrElse {
           // Here we find a valid geom field in the first record or throw.
           sft.getAttributeDescriptors.asScala.map(_.getLocalName)
-            .map{ n => (n, readFieldAsWkt(genericRecord, n)) }
+            .map{ n => (n, readFieldAsWkt(genericRecord, n, logFailure = false)) }
             .find(_._2.isDefined).map { kv =>
               geomSrcAttributeName = Option(kv._1)
               kv._2.get
@@ -76,11 +76,16 @@ class ConfluentFeatureSerializer(sft: SimpleFeatureType,
     ScalaSimpleFeatureFactory.buildFeature(sft, attrs, id)
   }
 
-  private def readFieldAsWkt(genericRecord: GenericRecord, fieldName: String): Option[Geometry] = {
+  private def readFieldAsWkt(genericRecord: GenericRecord,
+                             fieldName: String,
+                             logFailure: Boolean = true): Option[Geometry] = {
     try {
       Option(wktReader.read(genericRecord.get(fieldName).toString))
     } catch {
-      case NonFatal(t) => None
+      case NonFatal(t) =>
+        logger.error(s"Error parsing wkt from field $fieldName with value ${genericRecord.get(fieldName)} " +
+          s"for sft ${sft.getTypeName}")
+        None
     }
   }
 
