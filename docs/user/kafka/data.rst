@@ -68,6 +68,6 @@ in the ``geomesa-feature-kryo_2.11`` module through Maven. Alternatively, produc
 Avro-encoded messages through the ``kafka.serialization.type`` data store parameter. Avro libraries exist in many
 languages, and Avro messages follow a defined schema that allows for cross-platform parsing.
 
-Often when using Kafka the Confluent Schema-Registry is used to store and version schemas for data on kafka topics.
-The Kafka data store can consume messages from topics with their schemas registered if you set the
+The Confluent Schema-Registry is often used to store versioned schemas for data residing on Kafka topics.
+The Kafka data store will consume messages from topics with their schemas registered if you set the
 ``kafka.serialization.type`` data store parameter to ``"confluent"`` as well as provide a ``kafka.schema.registry.url``.
