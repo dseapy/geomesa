@@ -13,8 +13,8 @@ import java.net.URL
 import java.util.Date
 
 import com.typesafe.scalalogging.LazyLogging
-import com.vividsolutions.jts.geom.Geometry
-import com.vividsolutions.jts.io.WKTReader
+import org.locationtech.jts.geom.Geometry
+import org.locationtech.jts.io.WKTReader
 import io.confluent.kafka.schemaregistry.client.{CachedSchemaRegistryClient, SchemaRegistryClient}
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import org.apache.avro.generic.GenericRecord
