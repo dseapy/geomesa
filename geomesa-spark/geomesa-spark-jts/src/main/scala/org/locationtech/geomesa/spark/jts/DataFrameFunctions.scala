@@ -10,7 +10,7 @@ package org.locationtech.geomesa.spark.jts
 
 import java.{lang => jl}
 
-import com.vividsolutions.jts.geom._
+import org.locationtech.jts.geom._
 import org.apache.spark.sql.catalyst.expressions.Literal
 import org.apache.spark.sql.functions.{array, lit}
 import org.apache.spark.sql.jts._
@@ -93,7 +93,7 @@ object DataFrameFunctions extends SpatialEncoders {
     def st_makePoint(x: Column, y: Column): TypedColumn[Any, Point] =
       udfToColumn(ST_MakePoint, constructorNames, x, y)
     def st_makePoint(x: Double, y: Double): TypedColumn[Any, Point] =
-      st_makePoint(lit(x), lit(x))
+      st_makePoint(lit(x), lit(y))
 
     def st_makeLine(pointSeq: Column): TypedColumn[Any, LineString] =
       udfToColumn(ST_MakeLine, constructorNames, pointSeq)
@@ -166,6 +166,9 @@ object DataFrameFunctions extends SpatialEncoders {
 
     def st_castToLineString(geom: Column): TypedColumn[Any, LineString] =
       udfToColumn(ST_CastToLineString, castingNames, geom)
+
+    def st_castToGeometry(geom: Column): TypedColumn[Any, Geometry] =
+      udfToColumn(ST_CastToGeometry, castingNames, geom)
 
     def st_byteArray(str: Column): TypedColumn[Any, Array[Byte]] =
       udfToColumn(ST_ByteArray, castingNames, str)

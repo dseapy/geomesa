@@ -8,6 +8,8 @@
 
 package org.locationtech.geomesa.hbase.data
 
+import java.util.Collections
+
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.hadoop.hbase.TableName
 import org.geotools.data._
@@ -18,14 +20,14 @@ import org.geotools.filter.text.ecql.ECQL
 import org.locationtech.geomesa.features.ScalaSimpleFeature
 import org.locationtech.geomesa.hbase.data.HBaseDataStoreParams._
 import org.locationtech.geomesa.hbase.index.{HBaseAttributeIndex, HBaseIdIndex, HBaseZ3Index}
-import org.locationtech.geomesa.index.conf.{QueryProperties, SchemaProperties}
+import org.locationtech.geomesa.index.conf.{QueryHints, QueryProperties, SchemaProperties}
 import org.locationtech.geomesa.process.query.ProximitySearchProcess
 import org.locationtech.geomesa.process.tube.TubeSelectProcess
 import org.locationtech.geomesa.utils.collection.SelfClosingIterator
 import org.locationtech.geomesa.utils.conf.{GeoMesaProperties, SemanticVersion}
 import org.locationtech.geomesa.utils.geotools.SimpleFeatureTypes
 import org.opengis.feature.simple.SimpleFeature
-import org.opengis.filter.Filter
+import org.opengis.filter.{Filter, Id}
 import org.specs2.matcher.MatchResult
 
 import scala.collection.JavaConversions._
@@ -131,6 +133,33 @@ class HBaseDataStoreTest extends HBaseTest with LazyLogging {
         }
 
         testProcesses(ds)
+
+        def testCount(ds: HBaseDataStore): MatchResult[_] = {
+          val query = new Query(typeName, Filter.INCLUDE, Query.NO_PROPERTIES)
+          val results = SelfClosingIterator(ds.getFeatureReader(query, Transaction.AUTO_COMMIT)).toList
+          results must haveLength(10)
+          results.map(_.getID) must containTheSameElementsAs(toAdd.map(_.getID))
+          foreach(results)(_.getAttributeCount mustEqual 0)
+        }
+
+        def testExactCount(ds: HBaseDataStore): MatchResult[_] = {
+          // without hints
+          ds.getFeatureSource(typeName).getFeatures(new Query(typeName, Filter.INCLUDE)).size() mustEqual 0
+          ds.getFeatureSource(typeName).getCount(new Query(typeName, Filter.INCLUDE)) mustEqual -1
+
+          val queryWithHint = new Query(typeName, Filter.INCLUDE)
+          queryWithHint.getHints.put(QueryHints.EXACT_COUNT, java.lang.Boolean.TRUE)
+          val queryWithViewParam = new Query(typeName, Filter.INCLUDE)
+          queryWithViewParam.getHints.put(Hints.VIRTUAL_TABLE_PARAMETERS,
+            Collections.singletonMap("EXACT_COUNT", "true"))
+
+          foreach(Seq(queryWithHint, queryWithViewParam)) { query =>
+            ds.getFeatureSource(typeName).getFeatures(query).size() mustEqual 10
+          }
+        }
+
+        testCount(ds)
+        testExactCount(ds)
 
         ds.getFeatureSource(typeName).removeFeatures(ECQL.toFilter("INCLUDE"))
 
@@ -268,7 +297,6 @@ class HBaseDataStoreTest extends HBaseTest with LazyLogging {
         feature.getAttribute(attribute) mustEqual results.find(_.getID == feature.getID).get.getAttribute(attribute)
       }
     }
-    ds.getFeatureSource(typeName).getFeatures(query).size() mustEqual results.length
 
     // verify ranges are grouped appropriately to not cross shard boundaries
     forall(ds.getQueryPlan(query).flatMap(_.scans)) { scan =>
@@ -276,5 +304,19 @@ class HBaseDataStoreTest extends HBaseTest with LazyLogging {
         scan.getStartRow()(0) mustEqual scan.getStopRow()(0)
       }
     }
+
+    query.getFilter match {
+      case _: Id =>
+        // id filters use estimated stats based on the filter itself
+        ds.getFeatureSource(typeName).getCount(query) mustEqual results.length
+        ds.getFeatureSource(typeName).getFeatures(query).size() mustEqual results.length
+
+      case _ =>
+        ds.getFeatureSource(typeName).getCount(query) mustEqual -1
+        ds.getFeatureSource(typeName).getFeatures(query).size() mustEqual 0
+    }
+
+    query.getHints.put(QueryHints.EXACT_COUNT, true)
+    ds.getFeatureSource(typeName).getFeatures(query).size() mustEqual results.length
   }
 }

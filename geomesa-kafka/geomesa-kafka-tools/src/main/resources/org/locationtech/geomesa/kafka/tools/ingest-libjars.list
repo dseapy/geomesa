@@ -1,7 +1,9 @@
 avro
 caffeine
 commons-csv
+commons-lang3
 commons-pool
+commons-text
 config
 curator-client
 curator-framework
@@ -31,6 +33,10 @@ scala
 scalap
 sfcurve
 spatial4j
+si-quantity
+si-units
 stream
+unit-api
+uom
 zk
 zookeeper

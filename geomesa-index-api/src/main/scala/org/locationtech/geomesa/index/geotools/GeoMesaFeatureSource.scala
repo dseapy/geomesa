@@ -43,31 +43,28 @@ class GeoMesaFeatureSource(val ds: DataStore with HasGeoMesaStats,
                            protected val collection: (Query, GeoMesaFeatureSource) => GeoMesaFeatureCollection)
     extends SimpleFeatureSource with LazyLogging {
 
-  lazy private val hints = Collections.unmodifiableSet(Set.empty[Key])
+  lazy private val hints = Collections.unmodifiableSet(Collections.emptySet[Key])
 
   override def getSchema: SimpleFeatureType = sft
 
   /**
-   * The default behavior for getCount is to use estimated statistics.
-   * In most cases, this should be fairly close.
-   *
-   * Since users may want <b>exact</b> counts, there are two ways to force exact counts.
-   * First, one can set the System property "geomesa.force.count".
-   * Second, there is an EXACT_COUNT query hint.
-   *
-   * @param query query
-   * @return count
-   */
+    * The default behavior for getCount is to use estimated statistics if available, or -1 to indicate
+    * that the operation would be expensive (@see org.geotools.data.FeatureSource#getCount(org.geotools.data.Query)).
+    *
+    * Since users may want <b>exact</b> counts, there are two ways to force exact counts:
+    *   1. use the system property "geomesa.force.count"
+    *   2. use the EXACT_COUNT query hint
+    *
+    * @param query query
+    * @return
+    */
   override def getCount(query: Query): Int = {
     import org.locationtech.geomesa.index.conf.QueryHints.RichHints
     import org.locationtech.geomesa.index.conf.QueryProperties.QueryExactCount
 
     val useExactCount = query.getHints.isExactCount.getOrElse(QueryExactCount.get.toBoolean)
-    lazy val exactCount = ds.stats.getCount(getSchema, query.getFilter, exact = true).getOrElse(-1L)
+    val count = ds.stats.getCount(getSchema, query.getFilter, useExactCount).getOrElse(-1L)
 
-    val count = if (useExactCount) { exactCount } else {
-      ds.stats.getCount(getSchema, query.getFilter, exact = false).getOrElse(exactCount)
-    }
     if (count > Int.MaxValue) {
       logger.warn(s"Truncating count $count to Int.MaxValue (${Int.MaxValue})")
       Int.MaxValue
@@ -101,13 +98,6 @@ class GeoMesaFeatureSource(val ds: DataStore with HasGeoMesaStats,
   override def addFeatureListener(listener: FeatureListener): Unit = throw new NotImplementedError()
 
   override def removeFeatureListener(listener: FeatureListener): Unit = throw new NotImplementedError()
-
-  object GeoMesaQueryCapabilities extends QueryCapabilities {
-    override def isOffsetSupported = false
-    override def isReliableFIDSupported = true
-    override def isUseProvidedFIDSupported = true
-    override def supportsSorting(sortAttributes: Array[SortBy]) = true
-  }
 }
 
 /**
@@ -164,9 +154,21 @@ class GeoMesaFeatureCollection(private [geotools] val source: GeoMesaFeatureSour
 
   override def getBounds: ReferencedEnvelope = source.getBounds(query)
 
-  override def getCount: Int = source.getCount(query)
+  override def getCount: Int = {
+    if (!open.get) {
+      // once opened the query will already be configured by the query planner,
+      // otherwise do it here
+      source.runner.configureQuery(source.getSchema, query)
+    }
+    source.getCount(query)
+  }
 
-  override def size: Int = getCount
+  // note: this shouldn't return -1 (as opposed to FeatureSource.getCount), but we still don't return a valid
+  // size unless exact counts are enabled
+  override def size: Int = {
+    val count = getCount
+    if (count < 0) { 0 } else { count }
+  }
 }
 
 object GeoMesaFeatureCollection {
@@ -275,4 +277,11 @@ class DelegatingResourceInfo(source: SimpleFeatureSource) extends ResourceInfo {
   override def getCRS: CoordinateReferenceSystem = source.getSchema.getCoordinateReferenceSystem
 
   override def getBounds: ReferencedEnvelope = source.getBounds
+}
+
+object GeoMesaQueryCapabilities extends QueryCapabilities {
+  override def isOffsetSupported = false
+  override def isReliableFIDSupported = true
+  override def isUseProvidedFIDSupported = true
+  override def supportsSorting(sortAttributes: Array[SortBy]) = true
 }

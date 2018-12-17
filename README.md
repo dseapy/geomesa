@@ -36,18 +36,19 @@ geospatial analytics.
 
 ## Downloads
 
-**Current release: 2.0.2**
+**Current release: 2.1.0**
 
   &nbsp;&nbsp;&nbsp;&nbsp;
-  [**HBase**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.0.2/geomesa-hbase_2.11-2.0.2-bin.tar.gz) |
-  [**Accumulo**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.0.2/geomesa-accumulo_2.11-2.0.2-bin.tar.gz) |
-  [**Cassandra**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.0.2/geomesa-cassandra_2.11-2.0.2-bin.tar.gz) |
-  [**Kafka**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.0.2/geomesa-kafka_2.11-2.0.2-bin.tar.gz) |
-  [**FileSystem**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.0.2/geomesa-fs_2.11-2.0.2-bin.tar.gz) |
-  [**Source**](https://github.com/locationtech/geomesa/archive/geomesa_2.11-2.0.2.tar.gz) |
-  [**CheckSums**](https://github.com/locationtech/geomesa/releases/geomesa_2.11-2.0.2)
+  [**HBase**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.1.0/geomesa-hbase_2.11-2.1.0-bin.tar.gz) |
+  [**Accumulo**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.1.0/geomesa-accumulo_2.11-2.1.0-bin.tar.gz) |
+  [**Cassandra**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.1.0/geomesa-cassandra_2.11-2.1.0-bin.tar.gz) |
+  [**Kafka**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.1.0/geomesa-kafka_2.11-2.1.0-bin.tar.gz) |
+  [**FileSystem**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.1.0/geomesa-fs_2.11-2.1.0-bin.tar.gz) |
+  [**Bigtable**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-2.1.0/geomesa-bigtable_2.11-2.1.0-bin.tar.gz) |
+  [**Source**](https://github.com/locationtech/geomesa/archive/geomesa_2.11-2.1.0.tar.gz) |
+  [**CheckSums**](https://github.com/locationtech/geomesa/releases/geomesa_2.11-2.1.0)
 
-**Development version: 2.1.0-SNAPSHOT** &nbsp;
+**Development version: 2.2.0-SNAPSHOT** &nbsp;
   [![Build Status](https://api.travis-ci.org/locationtech/geomesa.svg?branch=master)](https://travis-ci.org/locationtech/geomesa)
 
 ### Verifying Downloads
@@ -62,7 +63,7 @@ $ gpg2 --keyserver hkp://pool.sks-keyservers.net --recv-keys CD24F317
 Then verify the file:
 
 ```bash
-$ gpg2 --verify geomesa-accumulo_2.11-2.0.2-bin.tar.gz.asc geomesa-accumulo_2.11-2.0.2-bin.tar.gz
+$ gpg2 --verify geomesa-accumulo_2.11-2.1.0-bin.tar.gz.asc geomesa-accumulo_2.11-2.1.0-bin.tar.gz
 ```
 
 The keys currently used for signing are:
@@ -110,7 +111,7 @@ and then include the desired `geomesa-*` dependencies:
 <dependency>
   <groupId>org.locationtech.geomesa</groupId>
   <artifactId>geomesa-utils_2.11</artifactId>
-  <version>2.0.2</version>
+  <version>2.1.0</version>
 </dependency>
   ...
 ```
@@ -157,7 +158,7 @@ resolvers ++= Seq(
 
 // Select desired modules
 libraryDependencies ++= Seq(
-  "org.locationtech.geomesa" %% "geomesa-utils" % "2.0.2",
+  "org.locationtech.geomesa" %% "geomesa-utils" % "2.1.0",
   ...
 )
 ```
@@ -168,7 +169,7 @@ Requirements:
 
 * [Git](http://git-scm.com/)
 * [Java JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-* [Apache Maven](http://maven.apache.org/) 3.2.2 or later
+* [Apache Maven](http://maven.apache.org/) 3.3.9 or later
 
 Use Git to download the source code. Navigate to the destination directory, then run:
 
@@ -184,3 +185,8 @@ provides the script `build/mvn`, which is a wrapper around Maven that downloads 
 [Zinc](https://github.com/typesafehub/zinc), a fast incremental compiler:
 
     build/mvn clean install -T8 -DskipTests
+
+If the Zinc build fails with an error finding "javac", try setting the JAVA_HOME
+environment variable to point to the root of your JDK.  Example from a Mac:
+
+    JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/Home" build/mvn clean install

@@ -9,14 +9,16 @@
 package org.locationtech.geomesa.tools.ingest
 
 import java.io.{File, FileWriter, PrintWriter}
+import java.util.Locale
 
 import com.beust.jcommander.{Parameter, ParameterException}
 import com.typesafe.config.{Config, ConfigRenderOptions}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.commons.io.FilenameUtils
 import org.geotools.data.DataStore
-import org.locationtech.geomesa.convert.shp.ShapefileConverterFactory
 import org.locationtech.geomesa.convert.ConverterConfigLoader
+import org.locationtech.geomesa.convert.all.TypeAwareInference
+import org.locationtech.geomesa.convert.shp.ShapefileConverterFactory
 import org.locationtech.geomesa.convert2.SimpleFeatureConverter
 import org.locationtech.geomesa.tools.DistributedRunParam.RunModes
 import org.locationtech.geomesa.tools._
@@ -24,11 +26,10 @@ import org.locationtech.geomesa.tools.utils.{CLArgResolver, DataFormats, Prompt}
 import org.locationtech.geomesa.utils.geotools.{ConfigSftParsing, SimpleFeatureTypes}
 import org.locationtech.geomesa.utils.io.{PathUtils, WithClose}
 import org.opengis.feature.simple.SimpleFeatureType
-import java.util.{List => jList}
 
+import scala.io.Source
 import scala.util.Try
 import scala.util.control.NonFatal
-import scala.io.Source
 
 trait IngestCommand[DS <: DataStore] extends DataStoreCommand[DS] with InteractiveCommand with LazyLogging {
 
@@ -70,7 +71,10 @@ trait IngestCommand[DS <: DataStore] extends DataStoreCommand[DS] with Interacti
         val opt = if (params.fmt == DataFormats.Shp) {
           ShapefileConverterFactory.infer(file.path, Option(sft))
         } else {
-          SimpleFeatureConverter.infer(() => file.open, Option(sft))
+          Option(params.fmt).map(_.toString.toLowerCase(Locale.US)) match {
+            case Some(fmt) => TypeAwareInference.infer(fmt, () => file.open, Option(sft))
+            case None      => SimpleFeatureConverter.infer(() => file.open, Option(sft))
+          }
         }
         opt.getOrElse {
           throw new ParameterException("Could not determine converter from inputs - please specify a converter")
@@ -136,7 +140,7 @@ trait IngestCommand[DS <: DataStore] extends DataStoreCommand[DS] with Interacti
 
   protected def createConverterIngest(sft: SimpleFeatureType, converterConfig: Config, ingestFiles: Seq[String]): Runnable = {
     new ConverterIngest(sft, connection, converterConfig, ingestFiles, Option(params.mode),
-      libjarsFile, libjarsPaths, params.threads, Option(params.maxSplitSize))
+      libjarsFile, libjarsPaths, params.threads, Option(params.maxSplitSize), params.waitForCompletion)
   }
 
   private def ensureSameFs(ingestFiles: Seq[String]): Unit = {
@@ -200,4 +204,8 @@ trait IngestParams extends OptionalTypeNameParam with OptionalFeatureSpecParam w
 
   @Parameter(names = Array("--src-list"), description = "Input files are text files with lists of files, one per line, to ingest.")
   var srcList: Boolean = false
+
+  @Parameter(names = Array("--no-tracking"), description = "This application closes when ingest job is submitted. Useful for launching jobs with a script.")
+  var noWaitForCompletion: Boolean = false
+  def waitForCompletion: Boolean = !noWaitForCompletion
 }

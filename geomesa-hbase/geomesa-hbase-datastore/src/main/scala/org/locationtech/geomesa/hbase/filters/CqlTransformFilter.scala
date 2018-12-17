@@ -17,6 +17,7 @@ import org.apache.hadoop.hbase.{Cell, KeyValue}
 import org.geotools.filter.text.ecql.ECQL
 import org.locationtech.geomesa.features.SerializationOption.SerializationOptions
 import org.locationtech.geomesa.features.kryo.{KryoBufferSimpleFeature, KryoFeatureSerializer}
+import org.locationtech.geomesa.filter.factory.FastFilterFactory
 import org.locationtech.geomesa.hbase.filters.CqlTransformFilter.DelegateFilter
 import org.locationtech.geomesa.index.iterators.IteratorCache
 import org.locationtech.geomesa.utils.cache.ByteArrayCacheKey
@@ -69,7 +70,7 @@ class CqlTransformFilter(delegate: DelegateFilter, serialized: Array[Byte])
   override def filterRow(): Boolean = false
   override def getNextKeyHint(currentKV: KeyValue): KeyValue = null
   override def getNextCellHint(currentKV: Cell): Cell = null
-  override def isFamilyEssential(name: Array[Byte]): Boolean = false
+  override def isFamilyEssential(name: Array[Byte]): Boolean = true
   override def toByteArray: Array[Byte] = serialized
 
   // overrides package-private method in Filter
@@ -158,8 +159,8 @@ object CqlTransformFilter extends StrictLogging {
         ByteArrays.writeInt(cqlBytes.length, array, offset)
         offset += 4
         System.arraycopy(cqlBytes, 0, array, offset, cqlBytes.length)
-        // write out a zero to indicate that there aren't any transforms
-        ByteArrays.writeInt(0, array, offset + cqlBytes.length)
+        // write out a -1 to indicate that there aren't any transforms
+        ByteArrays.writeInt(-1, array, offset + cqlBytes.length)
 
         array
 
@@ -217,7 +218,7 @@ object CqlTransformFilter extends StrictLogging {
 
       val tdefsLength = ByteArrays.readInt(bytes, offset)
 
-      if (tdefsLength == 0) {
+      if (tdefsLength == -1) {
         if (cql == null) {
           throw new DeserializationException("No filter or transform defined")
         } else {
@@ -271,14 +272,20 @@ object CqlTransformFilter extends StrictLogging {
     override def transform: Option[(String, SimpleFeatureType)] = None
 
     override def filterKeyValue(v: Cell): ReturnCode = {
-      // TODO GEOMESA-1803 we need to set the id properly
-      feature.setBuffer(v.getValueArray, v.getValueOffset, v.getValueLength)
-      if (filt.evaluate(feature)) { ReturnCode.INCLUDE } else { ReturnCode.SKIP }
+      try {
+        // TODO GEOMESA-1803 we need to set the id properly
+        feature.setBuffer(v.getValueArray, v.getValueOffset, v.getValueLength)
+        if (filt.evaluate(feature)) { ReturnCode.INCLUDE } else { ReturnCode.SKIP }
+      } catch {
+        case NonFatal(e) =>
+          logger.error("Error evaluating filter, skipping:", e)
+          ReturnCode.SKIP
+      }
     }
 
     override def transformCell(v: Cell): Cell = v
 
-    override def copy(): FilterDelegate = new FilterDelegate(sft, feature.copy(), filt)
+    override def copy(): FilterDelegate = new FilterDelegate(sft, feature.copy(), FastFilterFactory.copy(sft, filt))
 
     override def toString: String = s"CqlFilter[${ECQL.toCQL(filt)}]"
   }
@@ -296,9 +303,15 @@ object CqlTransformFilter extends StrictLogging {
     override def transform: Option[(String, SimpleFeatureType)] = feature.getTransform
 
     override def filterKeyValue(v: Cell): ReturnCode = {
-      // TODO GEOMESA-1803 we need to set the id properly
-      feature.setBuffer(v.getValueArray, v.getValueOffset, v.getValueLength)
-      ReturnCode.INCLUDE
+      try {
+        // TODO GEOMESA-1803 we need to set the id properly
+        feature.setBuffer(v.getValueArray, v.getValueOffset, v.getValueLength)
+        ReturnCode.INCLUDE
+      } catch {
+        case NonFatal(e) =>
+          logger.error("Error setting feature buffer, skipping:", e)
+          ReturnCode.SKIP
+      }
     }
 
     override def transformCell(v: Cell): Cell = {
@@ -327,9 +340,15 @@ object CqlTransformFilter extends StrictLogging {
     override def transform: Option[(String, SimpleFeatureType)] = feature.getTransform
 
     override def filterKeyValue(v: Cell): ReturnCode = {
-      // TODO GEOMESA-1803 we need to set the id properly
-      feature.setBuffer(v.getValueArray, v.getValueOffset, v.getValueLength)
-      if (filt.evaluate(feature)) { ReturnCode.INCLUDE } else { ReturnCode.SKIP }
+      try {
+        // TODO GEOMESA-1803 we need to set the id properly
+        feature.setBuffer(v.getValueArray, v.getValueOffset, v.getValueLength)
+        if (filt.evaluate(feature)) { ReturnCode.INCLUDE } else { ReturnCode.SKIP }
+      } catch {
+        case NonFatal(e) =>
+          logger.error("Error evaluating filter, skipping:", e)
+          ReturnCode.SKIP
+      }
     }
 
     override def transformCell(v: Cell): Cell = {
@@ -339,7 +358,8 @@ object CqlTransformFilter extends StrictLogging {
         KeyValue.Type.Put, value, 0, value.length)
     }
 
-    override def copy(): FilterTransformDelegate = new FilterTransformDelegate(sft, feature.copy(), filt)
+    override def copy(): FilterTransformDelegate =
+      new FilterTransformDelegate(sft, feature.copy(), FastFilterFactory.copy(sft, filt))
 
     override def toString: String = s"CqlTransformFilter[${ECQL.toCQL(filt)}, ${feature.getTransform.get._1}]"
   }

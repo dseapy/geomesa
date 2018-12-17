@@ -2,7 +2,9 @@ avro
 bigtable
 caffeine
 commons-csv
+commons-lang3
 commons-pool
+commons-text
 config
 geomesa
 gson
@@ -23,4 +25,8 @@ Saxon-HE
 scala
 spatial4j
 sfcurve
+si-quantity
+si-units
 stream
+unit-api
+uom

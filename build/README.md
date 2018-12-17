@@ -44,6 +44,7 @@ geospatial analytics.
   [**Cassandra**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-${geomesa.release.version}/geomesa-cassandra_2.11-${geomesa.release.version}-bin.tar.gz) |
   [**Kafka**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-${geomesa.release.version}/geomesa-kafka_2.11-${geomesa.release.version}-bin.tar.gz) |
   [**FileSystem**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-${geomesa.release.version}/geomesa-fs_2.11-${geomesa.release.version}-bin.tar.gz) |
+  [**Bigtable**](https://github.com/locationtech/geomesa/releases/download/geomesa_2.11-${geomesa.release.version}/geomesa-bigtable_2.11-${geomesa.release.version}-bin.tar.gz) |
   [**Source**](https://github.com/locationtech/geomesa/archive/geomesa_2.11-${geomesa.release.version}.tar.gz) |
   [**CheckSums**](https://github.com/locationtech/geomesa/releases/geomesa_2.11-${geomesa.release.version})
 
@@ -168,7 +169,7 @@ Requirements:
 
 * [Git](http://git-scm.com/)
 * [Java JDK 8](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
-* [Apache Maven](http://maven.apache.org/) 3.2.2 or later
+* [Apache Maven](http://maven.apache.org/) 3.3.9 or later
 
 Use Git to download the source code. Navigate to the destination directory, then run:
 
@@ -184,3 +185,8 @@ provides the script `build/mvn`, which is a wrapper around Maven that downloads 
 [Zinc](https://github.com/typesafehub/zinc), a fast incremental compiler:
 
     build/mvn clean install -T8 -DskipTests
+
+If the Zinc build fails with an error finding "javac", try setting the JAVA_HOME
+environment variable to point to the root of your JDK.  Example from a Mac:
+
+    JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/Home" build/mvn clean install

@@ -15,8 +15,8 @@ import java.util.{Collections, Date, Properties}
 import java.{util, io => jio}
 
 import com.typesafe.scalalogging.LazyLogging
-import com.vividsolutions.jts.geom.Point
 import io.confluent.kafka.serializers.KafkaAvroSerializer
+import org.locationtech.jts.geom.Point
 import kafka.admin.AdminUtils
 import org.apache.avro.Schema
 import org.apache.avro.generic.{GenericData, GenericRecord}

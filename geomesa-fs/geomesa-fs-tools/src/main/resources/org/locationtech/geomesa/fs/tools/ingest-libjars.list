@@ -2,7 +2,9 @@ aircompressor
 avro
 caffeine
 commons-csv
+commons-lang3
 commons-pool
+commons-text
 config
 curator-client
 curator-framework
@@ -35,5 +37,9 @@ scala
 scalap
 sfcurve
 shapeless
+si-quantity
+si-units
 spatial4j
 stream
+unit-api
+uom
