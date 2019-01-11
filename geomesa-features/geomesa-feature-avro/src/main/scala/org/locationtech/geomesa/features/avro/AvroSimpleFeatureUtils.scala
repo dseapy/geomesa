@@ -1,5 +1,5 @@
 /***********************************************************************
- * Copyright (c) 2013-2018 Commonwealth Computer Research, Inc.
+ * Copyright (c) 2013-2019 Commonwealth Computer Research, Inc.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Apache License, Version 2.0
  * which accompanies this distribution and is available at
@@ -15,7 +15,7 @@ import java.util.{Date, Locale, UUID}
 import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.io.WKBWriter
 import org.apache.avro.{Schema, SchemaBuilder}
-import org.geotools.util.Converters
+import org.locationtech.geomesa.utils.geotools.converters.FastConverter
 import org.opengis.feature.simple.SimpleFeatureType
 
 import scala.collection.JavaConversions._
@@ -132,7 +132,7 @@ object AvroSimpleFeatureUtils {
       } else if (classOf[Array[Byte]].isAssignableFrom(binding)) {
         (value: AnyRef) => ByteBuffer.wrap(value.asInstanceOf[Array[Byte]])
       } else {
-        (value: AnyRef) => Option(Converters.convert(value, classOf[String])).getOrElse(value.toString)
+        (value: AnyRef) => FastConverter.convert(value, classOf[String])
       }
 
       (nameEncoder.encode(ad.getLocalName), Binding(ad.getType.getBinding, converter))
